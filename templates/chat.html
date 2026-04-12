@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered Import/Export Business Assistant — ask about international trade, Indian export data, and starting your business.">
+    <title>Import/Export Business Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="chat-header" id="chat-header">
+            <div class="header-icon">🌐</div>
+            <div class="header-text">
+                <h1>Import/Export Assistant</h1>
+                <p>Powered by Indian trade data &amp; expert knowledge</p>
+            </div>
+            <div class="header-status">
+                <span class="status-dot"></span>
+                Online
+            </div>
+        </header>
+
+        <!-- Chat Messages -->
+        <div class="chat-box" id="chat-box">
+            <!-- Welcome state -->
+            <div class="welcome-message" id="welcome-message">
+                <div class="welcome-icon">🚢</div>
+                <h2>Welcome to your Trade Assistant</h2>
+                <p>Ask me anything about import/export business, Indian trade data, HS codes, commodities, or how to start your own trading company.</p>
+                <div class="suggestion-chips" id="suggestion-chips">
+                    <button class="chip" data-query="How do I start an export business from India?">🚀 Start an export business</button>
+                    <button class="chip" data-query="What does India export to the USA?">🇺🇸 India exports to USA</button>
+                    <button class="chip" data-query="What are the top commodities India exports?">📦 Top export commodities</button>
+                    <button class="chip" data-query="Explain HS codes and their importance in trade">🏷️ What are HS codes?</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div class="typing-indicator" id="typing-indicator">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input
+                    type="text"
+                    id="user-input"
+                    placeholder="Ask about import/export, trade data, HS codes..."
+                    autocomplete="off"
+                    autofocus
+                >
+                <button class="send-btn" id="send-btn" title="Send message">
+                    ➤
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── DOM Elements ─────────────────────────────────────────────
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const suggestionChips = document.querySelectorAll('.chip');
+
+        let isWaiting = false;
+
+        // ── Suggestion Chips ─────────────────────────────────────────
+        suggestionChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                const query = chip.getAttribute('data-query');
+                userInput.value = query;
+                sendMessage();
+            });
+        });
+
+        // ── Send Message ─────────────────────────────────────────────
+        function sendMessage() {
+            const msg = userInput.value.trim();
+            if (!msg || isWaiting) return;
+
+            // Hide welcome on first message
+            if (welcomeMessage) {
+                welcomeMessage.style.display = 'none';
+            }
+
+            // Add user message bubble
+            appendMessage('user', msg);
+            userInput.value = '';
+            isWaiting = true;
+            sendBtn.disabled = true;
+
+            // Show typing indicator
+            typingIndicator.classList.add('active');
+            scrollToBottom();
+
+            // Send to backend
+            const formData = new FormData();
+            formData.append('msg', msg);
+
+            fetch('/get', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(res => res.json())
+            .then(data => {
+                typingIndicator.classList.remove('active');
+                appendMessage('bot', data.answer, data.sources || []);
+                isWaiting = false;
+                sendBtn.disabled = false;
+                scrollToBottom();
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                typingIndicator.classList.remove('active');
+                appendMessage('bot', 'Sorry, something went wrong. Please try again.', []);
+                isWaiting = false;
+                sendBtn.disabled = false;
+            });
+        }
+
+        // ── Append Message to Chat ───────────────────────────────────
+        function appendMessage(role, text, sources = []) {
+            const row = document.createElement('div');
+            row.className = `message-row ${role}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = role === 'user' ? '🧑' : '🤖';
+
+            const content = document.createElement('div');
+            content.className = 'message-content';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = text;
+
+            content.appendChild(bubble);
+
+            // Add source tags for bot messages
+            if (role === 'bot' && sources.length > 0) {
+                const sourcesDiv = document.createElement('div');
+                sourcesDiv.className = 'message-sources';
+
+                sources.forEach(src => {
+                    const tag = document.createElement('span');
+                    tag.className = 'source-tag';
+                    if (src.toLowerCase().includes('export')) {
+                        tag.classList.add('export');
+                    }
+                    tag.textContent = src;
+                    sourcesDiv.appendChild(tag);
+                });
+
+                content.appendChild(sourcesDiv);
+            }
+
+            row.appendChild(avatar);
+            row.appendChild(content);
+            chatBox.appendChild(row);
+            scrollToBottom();
+        }
+
+        // ── Scroll to Bottom ─────────────────────────────────────────
+        function scrollToBottom() {
+            requestAnimationFrame(() => {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        }
+
+        // ── Event Listeners ──────────────────────────────────────────
+        sendBtn.addEventListener('click', sendMessage);
+
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Focus input on load
+        userInput.focus();
+    </script>
+</body>
+</html>
