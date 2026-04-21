@@ -12,7 +12,7 @@ Usage:
 from flask import Flask, render_template, jsonify, request
 from src.helper import download_hugging_face_embeddings
 from langchain_pinecone import PineconeVectorStore
-from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
@@ -28,16 +28,15 @@ app = Flask(__name__)
 load_dotenv()
 
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
-HUGGINGFACEHUB_API_TOKEN = os.environ.get("HUGGINGFACEHUB_ACCESS_TOKEN")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 if not PINECONE_API_KEY:
     raise ValueError("PINECONE_API_KEY not found in .env file")
-if not HUGGINGFACEHUB_API_TOKEN:
-    raise ValueError("HUGGINGFACEHUB_API_TOKEN not found in .env file")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY not found in .env file")
 
 os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
-os.environ["HUGGINGFACEHUB_API_TOKEN"] = HUGGINGFACEHUB_API_TOKEN
-os.environ["HF_TOKEN"] = HUGGINGFACEHUB_API_TOKEN
+os.environ["GOOGLE_API_KEY"] = GEMINI_API_KEY
 
 
 # ── Initialize embeddings & vector store ────────────────────────────
@@ -56,12 +55,7 @@ retriever = docsearch.as_retriever(
     search_kwargs={"k": 5},
 )
 
-llm = HuggingFaceEndpoint(
-    repo_id="HuggingFaceH4/zephyr-7b-beta",
-    task="text-generation",
-    huggingfacehub_api_token=HUGGINGFACEHUB_API_TOKEN,
-)
-model = ChatHuggingFace(llm=llm)
+model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", system_prompt),
@@ -100,12 +94,16 @@ def chat():
                 country = doc.metadata.get("country_to", "")
                 commodity = doc.metadata.get("commodity", "")
                 sources.append(f"Export Data: India → {country} ({commodity})")
-            elif source_info == "book" or source_info != "export_data":
+            elif source_info == "laws_kb":
+                sources.append("Trade Laws & Regulations KB")
+            elif source_info == "book":
                 page = doc.metadata.get("page", "")
                 if page:
                     sources.append(f"Book — Page {int(page) + 1}")
                 else:
                     sources.append("Book")
+            else:
+                sources.append("Knowledge Base")
 
     # Deduplicate sources
     unique_sources = list(dict.fromkeys(sources))

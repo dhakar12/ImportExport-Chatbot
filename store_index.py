@@ -1,7 +1,8 @@
 """
 store_index.py — Offline ingestion pipeline.
 
-Loads book PDFs and Indian export CSV, chunks them, generates embeddings,
+Loads book PDFs, Indian export CSV, and trade laws knowledge base,
+chunks them, generates embeddings,
 and upserts everything into a Pinecone serverless index.
 
 Usage:
@@ -12,6 +13,7 @@ import os
 from src.helper import (
     load_pdf_file,
     load_csv_as_documents,
+    load_text_file,
     filter_to_minimal_docs,
     text_split,
     download_hugging_face_embeddings,
@@ -41,10 +43,14 @@ print("📊 Loading export CSV...")
 export_docs = load_csv_as_documents(csv_path="data/export/merged_country_wise.csv")
 print(f"   → Loaded {len(export_docs)} export data entries.")
 
+print("📜 Loading trade laws knowledge base...")
+laws_docs = load_text_file(file_path="data/import_export_laws_knowledge_base.txt")
+print(f"   → Loaded {len(laws_docs)} law document(s).")
+
 
 # ── Step 2: Filter metadata ────────────────────────────────────────
 print("🔧 Filtering metadata...")
-all_docs = book_docs + export_docs
+all_docs = book_docs + export_docs + laws_docs
 filtered_docs = filter_to_minimal_docs(all_docs)
 
 

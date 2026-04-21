@@ -1,8 +1,8 @@
-# Environment
-# .env
-# venv/
-# env/
-# .venv/
+#Environment
+.env
+venv/
+env/
+.venv/
 
 # Python
 __pycache__/
