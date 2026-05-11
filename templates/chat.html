@@ -110,7 +110,17 @@
                 method: 'POST',
                 body: formData,
             })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    // Try to parse the JSON error body from Flask
+                    return res.json().then(errData => {
+                        throw new Error(errData.answer || 'Server error');
+                    }).catch(() => {
+                        throw new Error('Server returned an error (' + res.status + ')');
+                    });
+                }
+                return res.json();
+            })
             .then(data => {
                 typingIndicator.classList.remove('active');
                 appendMessage('bot', data.answer, data.sources || []);
@@ -121,7 +131,7 @@
             .catch(err => {
                 console.error('Error:', err);
                 typingIndicator.classList.remove('active');
-                appendMessage('bot', 'Sorry, something went wrong. Please try again.', []);
+                appendMessage('bot', err.message || 'Sorry, something went wrong. Please try again.', []);
                 isWaiting = false;
                 sendBtn.disabled = false;
             });
