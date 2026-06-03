@@ -1,6 +1,6 @@
 # Import/Export Assistant
 
-A project that builds an Import/Export Business chatbot using a Retrieval-Augmented Generation (RAG) pipeline. The system combines procedural guidance from a trade business knowledge base with Indian export data, and returns answers with source citations.
+A project that builds an Import/Export Business chatbot using a Retrieval-Augmented Generation (RAG) pipeline. The system combines procedural guidance from a trade business knowledge base with Indian export data, and returns answers with source citations. Users can also **upload their own business data** to receive personalised, data-driven suggestions for growing their export business.
 
 ---
 
@@ -32,6 +32,8 @@ RAG helps by:
 - Provide a single conversational interface for procedural guidance and trade-data questions.
 - Ground answers in designated documents and datasets.
 - Use Indian export statistics so trade-data answers are authoritative.
+- Allow users to upload their own business data (CSV, Excel, PDF) for personalised recommendations.
+- Cross-reference user data with the knowledge base to identify growth opportunities and risks.
 - Design the pipeline to support future data updates and new source types.
 
 ### 1.6 System overview
@@ -42,7 +44,12 @@ The chatbot uses a knowledge base composed of:
 - Indian export data in a merged CSV,
 - trade law and regulation knowledge.
 
-The system supports entrepreneur-style questions, trade-data queries, and general import/export questions.
+The system operates in two modes:
+
+1. **Standard mode** — answers questions using the RAG knowledge base.
+2. **Personalised mode** — when a user uploads their business data, the system combines the uploaded data with RAG-retrieved knowledge to give tailored suggestions.
+
+The system supports entrepreneur-style questions, trade-data queries, personalised business analysis, and general import/export questions.
 
 ### 1.7 Document structure
 
@@ -61,10 +68,19 @@ The system is organised into four stages:
 | **2** | Query → Answer | Online | Retrieve relevant chunks and generate answers with citations. |
 | **3** | Web Application | Online | Chat UI and backend API that invoke the RAG pipeline. |
 
-**End-to-end flow:**
+**End-to-end flow (standard mode):**
 
 ```
 User → Web UI → Backend API → RAG (Retrieve + LLM) → Answer + Citations → User
+```
+
+**End-to-end flow (personalised mode with file upload):**
+
+```
+User uploads file → Backend parses → Summary stored in session
+User asks question → RAG retrieves trade KB chunks
+                   → LLM gets: RAG context + user's business data
+                   → Personalised answer with citations → User
 ```
 
 **Offline pipeline:**
@@ -161,24 +177,78 @@ For each user query, retrieve relevant context from the knowledge base and gener
 
 ### 6.1 Purpose
 
-Expose the RAG pipeline through a user-facing chat interface.
+Expose the RAG pipeline through a user-facing chat interface, including file upload for personalised analysis.
 
 ### 6.2 Process
 
 | Step | Description |
 |------|-------------|
 | **User opens app** | The chat UI loads in the browser. |
+| **User uploads file** *(optional)* | User clicks 📎 to upload business data (CSV, Excel, PDF, TXT). Backend parses and stores a summary. |
 | **User submits question** | The frontend sends the message to the backend. |
-| **Backend processing** | The backend runs retrieval and LLM generation. |
-| **Frontend display** | The answer and sources appear in the chat. |
-| **Follow-up** | Multi-turn dialogue can be supported via chat history. |
+| **Backend processing** | The backend runs retrieval and LLM generation. If a file was uploaded, the user's data is injected into the prompt alongside RAG context. |
+| **Frontend display** | The answer and colour-coded source tags appear in the chat. |
+| **Follow-up** | Multi-turn dialogue is supported; uploaded data persists for the session. |
+| **Remove file** | User can click ✕ on the file badge to return to standard mode. |
 
 ### 6.3 Architecture
 
 - Frontend: `templates/chat.html` and `static/style.css`
-- Backend: `app.py` with RAG logic and API endpoint
+- Backend: `app.py` with RAG logic, file upload routes, and API endpoints
 - Retrieval engine: Pinecone vector store
 - LLM: HuggingFace endpoint via `langchain-huggingface`
+
+### 6.4 File Upload — Personalised Suggestions Feature
+
+#### 6.4.1 Purpose
+
+Allow export business owners to upload their own business data so the chatbot can analyse it and provide personalised, data-backed recommendations by cross-referencing with the trade knowledge base.
+
+#### 6.4.2 Supported file formats
+
+| Format | Extension | Parsing method |
+|--------|-----------|----------------|
+| CSV | `.csv` | `pandas.read_csv()` — auto-detects columns, builds summary with stats |
+| Excel | `.xlsx`, `.xls` | `pandas.read_excel()` — same as CSV |
+| PDF | `.pdf` | `PyPDFLoader` — extracts text from all pages |
+| Plain text | `.txt` | Direct text read |
+
+#### 6.4.3 How it works
+
+1. **Upload**: User clicks the 📎 button and selects a file (max 5 MB).
+2. **Parse**: The backend (`src/helper.py → parse_uploaded_file()`) reads the file and produces a structured text summary (~2000 chars max).
+3. **Store**: The summary is kept in server memory for the session duration.
+4. **Query**: When the user asks a question, the backend builds a personalised prompt that includes:
+   - The user's business data summary (from the uploaded file)
+   - RAG-retrieved context (from book, export data, and trade laws in Pinecone)
+5. **Answer**: The LLM cross-references both sources to give specific, actionable recommendations.
+6. **Clear**: User can remove the file at any time to switch back to standard mode.
+
+#### 6.4.4 Personalised analysis capabilities
+
+The personalised prompt instructs the LLM to:
+
+- Analyse the user's current export products, markets, and revenue.
+- Compare with Indian export trends from the knowledge base.
+- Identify growth opportunities — new markets, high-growth commodities, untapped regions.
+- Flag potential risks — declining markets, over-concentration.
+- Give specific, data-backed recommendations with numbers.
+- Cite both the user's data and the trade knowledge base.
+
+#### 6.4.5 API endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Serve the chat UI |
+| `/get` | POST | Handle chat messages (standard or personalised mode) |
+| `/upload` | POST | Upload and parse a business data file |
+| `/clear-upload` | POST | Remove uploaded data and return to standard mode |
+
+#### 6.4.6 Privacy
+
+- Uploaded files are parsed and immediately deleted from disk.
+- Only the text summary is kept in server memory for the session.
+- No uploaded data is stored permanently.
 
 ---
 
@@ -247,10 +317,13 @@ The data is normalised for missing values, dropped summary rows, and standardise
 ## 10. Advantages
 
 - Grounded answers from curated sources
-- Source citations for transparency
+- Colour-coded source citations (📊 export data, 📖 book, 📜 trade laws) for transparency
 - Official-style Indian export statistics
 - One interface for both procedural guidance and trade data
+- **Personalised suggestions** based on user-uploaded business data
+- Cross-referencing of user data with national trade statistics for actionable insights
 - Easy to extend with new datasets
+- Privacy-conscious: uploaded files are parsed and not stored permanently
 
 ---
 
@@ -258,6 +331,9 @@ The data is normalised for missing values, dropped summary rows, and standardise
 
 - Entrepreneur guidance on export/import business setup
 - Trade market research with country and commodity figures
+- **Personalised business analysis** — upload sales data to get market expansion recommendations
+- **Risk assessment** — identify over-concentrated markets or declining product categories
+- **Growth opportunity identification** — find high-growth commodities and untapped export destinations
 - Educational support for trade and customs topics
 - Future extension to dispute guidance and case-based support
 
@@ -278,10 +354,16 @@ The data is normalised for missing values, dropped summary rows, and standardise
 - Add multilingual support
 - Add voice and chatbot analytics
 - Integrate with real trade portals or customs APIs
+- Support multi-sheet Excel workbooks with sheet selection
+- Add persistent file storage with user accounts
+- Generate downloadable PDF reports from personalised analysis
+- Auto-generate an initial business health analysis upon file upload
 
 ---
 
-## 14. Sample Conversation
+## 14. Sample Conversations
+
+### 14.1 Standard mode
 
 **User:** How do I start an export business?
 
@@ -292,14 +374,42 @@ The data is normalised for missing values, dropped summary rows, and standardise
 4. Comply with customs, certificates, and export regulations.
 5. Find buyers and negotiate contracts.
 
-*Source: trade business knowledge base and export guidance.*
+📚 Sources:
+- 📖 Import/Export Business Book — Page 12
+- 📜 Trade Laws & Regulations KB — FTDR Act
+- Domain expertise
 
 **User:** What does India export to Australia?
 
 **Chatbot:**
 India exports commodities such as cereals and processed food products to Australia. The system can cite export data by HS code and value for FY 2023–2024 and 2024–2025.
 
-*Source: Indian export data, `data/export/merged_country_wise.csv`.*
+📚 Sources:
+- 📊 Indian Export Data — Australia (CEREALS, HS 10)
+
+---
+
+### 14.2 Personalised mode (after file upload)
+
+**User:** *Uploads `my_sales_data.csv` containing their export products, revenue, and destinations.*
+
+**Chatbot:** 📂 File "my_sales_data.csv" loaded successfully! I can now give you personalised suggestions based on your business data.
+
+**User:** Which new markets should I target?
+
+**Chatbot:**
+Based on your current exports of organic spices to the USA ($120K) and UAE ($95K), I recommend:
+
+1. **United Kingdom** — India's spice exports to the UK grew 18% in 2024–2025. Your product line aligns well.
+2. **Germany** — HS 0910 (spices) saw 12% growth to Germany; currently underserved by your portfolio.
+3. **Diversification risk**: 65% of your revenue comes from USA — consider spreading to 3–4 markets.
+
+📚 Sources:
+- 📊 Uploaded Business Data — revenue breakdown by country
+- 📊 Indian Export Data — UK (SPICES, HS 0910)
+- 📊 Indian Export Data — Germany (SPICES, HS 0910)
+- 📖 Import/Export Business Book — Page 87
+- Domain expertise
 
 ---
 
@@ -340,13 +450,16 @@ HUGGINGFACEHUB_ACCESS_TOKEN=your_huggingface_api_token
 
 ## Important files
 
-- `app.py` — Flask backend and RAG pipeline
-- `src/prompt.py` — system prompt and response rules
-- `src/helper.py` — embedding setup
-- `templates/chat.html` — chat interface
-- `static/style.css` — UI styling
-- `data/export/merged_country_wise.csv` — export dataset
-- `data/import_export_laws_knowledge_base.txt` — regulatory knowledge
+- `app.py` — Flask backend, RAG pipeline, file upload routes (`/upload`, `/clear-upload`)
+- `src/prompt.py` — system prompt (standard mode) and upload prompt (personalised mode)
+- `src/helper.py` — embedding setup, file parsing (`parse_uploaded_file`)
+- `templates/chat.html` — chat interface with 📎 upload button and file badge
+- `static/style.css` — UI styling with colour-coded source tags
+- `store_index.py` — offline ingestion pipeline for Pinecone
+- `data/export/merged_country_wise.csv` — Indian export dataset
+- `data/book/` — import/export business reference book (PDF)
+- `data/import_export_laws_knowledge_base.txt` — trade laws and regulatory knowledge
+- `requirements.txt` — Python dependencies (includes `openpyxl` for Excel upload support)
 - `docs/` — screenshot assets
 
 ## Notes

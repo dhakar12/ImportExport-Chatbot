@@ -140,6 +140,84 @@ def text_split(documents: List[Document]) -> List[Document]:
     return book_chunks + laws_chunks + export_chunks
 
 
+# ---------- Uploaded File Parsing ----------
+
+def parse_uploaded_file(filepath: str, filename: str) -> str:
+    """
+    Parse an uploaded business-stats file and return a structured text
+    summary suitable for LLM context injection.
+
+    Supported formats: .csv, .xlsx, .xls, .pdf, .txt
+    Returns a string capped at ~2000 characters.
+    """
+    ext = os.path.splitext(filename)[1].lower()
+
+    if ext == ".csv":
+        return _summarize_dataframe(pd.read_csv(filepath), filename)
+    elif ext in (".xlsx", ".xls"):
+        return _summarize_dataframe(pd.read_excel(filepath), filename)
+    elif ext == ".pdf":
+        return _summarize_pdf(filepath, filename)
+    elif ext == ".txt":
+        return _summarize_text(filepath, filename)
+    else:
+        raise ValueError(f"Unsupported file type: {ext}")
+
+
+def _summarize_dataframe(df: pd.DataFrame, filename: str) -> str:
+    """Build a concise text summary from a pandas DataFrame."""
+    lines: List[str] = []
+    lines.append(f"USER'S BUSINESS DATA (uploaded file: {filename}):")
+    lines.append(f"- Columns: {', '.join(df.columns.tolist())}")
+    lines.append(f"- Total rows: {len(df)}")
+
+    # Numeric column statistics
+    numeric_cols = df.select_dtypes(include="number").columns.tolist()
+    if numeric_cols:
+        lines.append("- Numeric summary:")
+        for col in numeric_cols[:5]:  # limit to 5 numeric columns
+            total = df[col].sum()
+            mean = df[col].mean()
+            lines.append(f"  • {col}: total={total:,.2f}, avg={mean:,.2f}, "
+                         f"min={df[col].min():,.2f}, max={df[col].max():,.2f}")
+
+    # Top rows preview
+    preview_rows = min(15, len(df))
+    lines.append(f"- First {preview_rows} rows:")
+    for idx, row in df.head(preview_rows).iterrows():
+        row_str = " | ".join(str(v) for v in row.values)
+        lines.append(f"  Row {idx + 1}: {row_str}")
+
+    summary = "\n".join(lines)
+    # Cap at ~2000 chars to fit within LLM context
+    if len(summary) > 2000:
+        summary = summary[:1950] + "\n  ... (truncated)"
+    return summary
+
+
+def _summarize_pdf(filepath: str, filename: str) -> str:
+    """Extract and summarize text from a PDF file."""
+    loader = PyPDFLoader(filepath)
+    pages = loader.load()
+    full_text = "\n".join(page.page_content for page in pages)
+
+    summary = f"USER'S BUSINESS DATA (uploaded file: {filename}):\n{full_text}"
+    if len(summary) > 2000:
+        summary = summary[:1950] + "\n... (truncated)"
+    return summary
+
+
+def _summarize_text(filepath: str, filename: str) -> str:
+    """Read and summarize a plain text file."""
+    with open(filepath, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    summary = f"USER'S BUSINESS DATA (uploaded file: {filename}):\n{content}"
+    if len(summary) > 2000:
+        summary = summary[:1950] + "\n... (truncated)"
+    return summary
+
+
 # ---------- Embeddings ----------
 
 def download_hugging_face_embeddings():

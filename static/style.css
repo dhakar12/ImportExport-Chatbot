@@ -287,7 +287,7 @@ body::before {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 10px;
+    padding: 5px 12px;
     font-size: 0.7rem;
     font-weight: 500;
     color: var(--accent-primary);
@@ -296,6 +296,10 @@ body::before {
     border-radius: 100px;
     transition: all var(--transition-fast);
     letter-spacing: 0.01em;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .source-tag:hover {
@@ -303,14 +307,42 @@ body::before {
     border-color: rgba(99, 102, 241, 0.35);
 }
 
-.source-tag::before {
-    content: '📄';
-    font-size: 0.65rem;
+/* Export data — green accent */
+.source-tag.export {
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.25);
 }
 
-.source-tag.export::before {
-    content: '📊';
+.source-tag.export:hover {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.40);
 }
+
+/* Laws KB — amber accent */
+.source-tag.laws {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.08);
+    border-color: rgba(251, 191, 36, 0.25);
+}
+
+.source-tag.laws:hover {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.40);
+}
+
+/* Book — blue accent */
+.source-tag.book {
+    color: #60a5fa;
+    background: rgba(96, 165, 250, 0.08);
+    border-color: rgba(96, 165, 250, 0.25);
+}
+
+.source-tag.book:hover {
+    background: rgba(96, 165, 250, 0.15);
+    border-color: rgba(96, 165, 250, 0.40);
+}
+
 
 /* ── Typing Indicator ─────────────────────────────────────────── */
 .typing-indicator {
@@ -492,6 +524,189 @@ body::before {
     transform: none;
 }
 
+/* ── Upload Button ────────────────────────────────────────────── */
+.upload-btn {
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-normal);
+    flex-shrink: 0;
+}
+
+.upload-btn:hover {
+    color: var(--accent-primary);
+    background: rgba(99, 102, 241, 0.10);
+    transform: scale(1.10);
+}
+
+.upload-btn:active {
+    transform: scale(0.95);
+}
+
+/* ── Upload Badge ─────────────────────────────────────────────── */
+.upload-badge {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 16px;
+    margin: 0 0 4px 0;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: var(--radius-md);
+    animation: badgeSlideIn 0.3s var(--transition-normal);
+}
+
+@keyframes badgeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.upload-badge-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.upload-badge-icon {
+    font-size: 18px;
+}
+
+.upload-badge-filename {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.upload-badge-status {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: #34d399;
+    padding: 2px 8px;
+    background: rgba(16, 185, 129, 0.12);
+    border-radius: 100px;
+}
+
+.upload-badge-remove {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.10);
+    color: #f87171;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.upload-badge-remove:hover {
+    background: rgba(239, 68, 68, 0.25);
+    transform: scale(1.15);
+}
+
+.upload-badge-hint {
+    font-size: 0.7rem;
+    color: rgba(16, 185, 129, 0.70);
+    padding-left: 26px;
+}
+
+/* ── Upload Progress ──────────────────────────────────────────── */
+.upload-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    margin: 0 0 4px 0;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    animation: badgeSlideIn 0.3s var(--transition-normal);
+}
+
+.upload-progress-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(99, 102, 241, 0.15);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.upload-progress-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+    border-radius: 2px;
+    animation: progressPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.upload-progress-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* ── Source Tag — Uploaded Data variant ────────────────────────── */
+.source-tag.uploaded {
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.25);
+}
+
+.source-tag.uploaded::before {
+    content: '📊';
+}
+
+/* ── Welcome Upload Hint ──────────────────────────────────────── */
+.welcome-upload-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.welcome-upload-hint strong {
+    color: var(--accent-primary);
+    font-weight: 600;
+}
+
+/* ── Input Footer ─────────────────────────────────────────────── */
+.input-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 20px 0;
+}
+
+.file-types-hint,
+.privacy-hint {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.privacy-hint {
+    opacity: 0.5;
+}
+
 /* ── Responsive ───────────────────────────────────────────────── */
 @media (max-width: 640px) {
     .app-container {
@@ -534,4 +749,23 @@ body::before {
         padding: 6px 12px;
         font-size: 0.72rem;
     }
+
+    .upload-badge {
+        padding: 8px 12px;
+    }
+
+    .upload-badge-filename {
+        font-size: 0.75rem;
+        max-width: 150px;
+    }
+
+    .input-footer {
+        padding: 4px 12px 0;
+    }
+
+    .file-types-hint,
+    .privacy-hint {
+        font-size: 0.6rem;
+    }
 }
+
